@@ -40,7 +40,14 @@ export default function Home() {
           setError('Error searching for company: ' + searchError.message)
         }
       } else if (data) {
-        setCompany(data as Company)
+        // Ensure numeric fields are properly converted to numbers
+        const companyData: Company = {
+          ...data,
+          base_price: Number(data.base_price) || 0,
+          revenue_2022: Number(data.revenue_2022) || 0,
+          revenue_2023: Number(data.revenue_2023) || 0,
+        }
+        setCompany(companyData)
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.')

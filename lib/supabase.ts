@@ -17,6 +17,5 @@ export interface Company {
   base_price: number
   revenue_2022: number
   revenue_2023: number
-  growth_rate: 'LOW' | 'MEDIUM' | 'HIGH'
   logo_url: string | null
 }

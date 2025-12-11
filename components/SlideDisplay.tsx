@@ -18,6 +18,21 @@ export default function SlideDisplay({ company, onCompanyChange }: SlideDisplayP
   const [searchLoading, setSearchLoading] = useState(false)
   const slideRef = useRef<HTMLDivElement>(null)
   
+  // Debug: Log company data to help diagnose issues
+  useEffect(() => {
+    if (company) {
+      console.log('Company data:', {
+        name: company.company_name,
+        base_price: company.base_price,
+        revenue_2022: company.revenue_2022,
+        revenue_2023: company.revenue_2023,
+        base_price_type: typeof company.base_price,
+        revenue_2022_type: typeof company.revenue_2022,
+        revenue_2023_type: typeof company.revenue_2023,
+      })
+    }
+  }, [company])
+  
   // Check if logo_url exists and is not empty
   const hasLogo = company.logo_url && typeof company.logo_url === 'string' && company.logo_url.trim() !== ''
   const showLogo = hasLogo && !logoError
@@ -87,7 +102,14 @@ export default function SlideDisplay({ company, onCompanyChange }: SlideDisplayP
         .single()
 
       if (!searchError && data) {
-        onCompanyChange(data as Company)
+        // Ensure numeric fields are properly converted to numbers
+        const companyData: Company = {
+          ...data,
+          base_price: Number(data.base_price) || 0,
+          revenue_2022: Number(data.revenue_2022) || 0,
+          revenue_2023: Number(data.revenue_2023) || 0,
+        }
+        onCompanyChange(companyData)
         setSearchQuery('')
         setShowSearchBar(false)
       }
@@ -173,28 +195,23 @@ export default function SlideDisplay({ company, onCompanyChange }: SlideDisplayP
             
             <div className={styles.infoRow}>
               <span className={styles.label}>SECTOR:</span>
-              <span className={styles.value}>{company.sector}</span>
+              <span className={styles.value}>{company.sector.toUpperCase()}</span>
             </div>
             
             <div className={styles.revenueTable}>
               <div className={styles.tableRow}>
-                <div className={styles.tableCell}>REVENUE 2022</div>
-                <div className={styles.tableCell}>REVENUE 2023</div>
+                <div className={styles.tableCell}>INCOME 2022</div>
+                <div className={styles.tableCell}>INCOME 2023</div>
               </div>
               <div className={styles.tableRow}>
-                <div className={styles.tableCell}>{company.revenue_2022.toLocaleString()}</div>
-                <div className={styles.tableCell}>{company.revenue_2023.toLocaleString()}</div>
+                <div className={styles.tableCell}>{Math.round(Number(company.revenue_2022) || 0).toLocaleString('en-US')}</div>
+                <div className={styles.tableCell}>{Math.round(Number(company.revenue_2023) || 0).toLocaleString('en-US')}</div>
               </div>
             </div>
             
             <div className={styles.infoRow}>
               <span className={styles.label}>BASE PRICE:</span>
-              <span className={styles.value}>{company.base_price.toLocaleString()}</span>
-            </div>
-            
-            <div className={styles.growthRateBadge}>
-              <span className={styles.growthLabel}>GROWTH RATE:</span>
-              <span className={styles.growthValue}>{company.growth_rate}</span>
+              <span className={styles.value}>{Math.round(Number(company.base_price) || 0).toLocaleString('en-US')}</span>
             </div>
           </div>
         </div>

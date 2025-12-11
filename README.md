@@ -44,7 +44,6 @@ The `companies` table includes:
 - `base_price` - Base price (BIGINT)
 - `revenue_2022` - Revenue for 2022
 - `revenue_2023` - Revenue for 2023
-- `growth_rate` - Growth rate (LOW, MEDIUM, or HIGH)
 - `logo_url` - URL to company logo image (optional - displays "NO LOGO" if not provided)
 
 ## Usage
@@ -60,7 +59,6 @@ The `companies` table includes:
    - `base_price` - Base price (integer)
    - `revenue_2022` - Revenue for 2022 (decimal)
    - `revenue_2023` - Revenue for 2023 (decimal)
-   - `growth_rate` - Growth rate (must be: LOW, MEDIUM, or HIGH)
    - `logo_url` - URL to company logo image (optional - leave empty for "NO LOGO")
 4. Select your CSV file and click "Import CSV"
 5. The data will be automatically imported into the database

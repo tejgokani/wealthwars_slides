@@ -48,7 +48,7 @@ export default function UploadPage() {
       throw new Error('CSV file must have at least a header row and one data row')
     }
 
-    const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/^"|"$/g, ''))
+    const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/^"|"$/g, '').trim())
     
     // Expected columns
     const requiredColumns = [
@@ -57,8 +57,7 @@ export default function UploadPage() {
       'sector',
       'base_price',
       'revenue_2022',
-      'revenue_2023',
-      'growth_rate'
+      'revenue_2023'
     ]
 
     // Check if all required columns exist
@@ -71,7 +70,93 @@ export default function UploadPage() {
     const skipped: number[] = []
 
     for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i]).map(v => v.replace(/^"|"$/g, '').trim())
+      // Skip completely empty lines
+      if (!lines[i] || lines[i].trim() === '' || lines[i].split(',').every(v => v.trim() === '')) {
+        continue
+      }
+      
+      let values = parseCSVLine(lines[i]).map(v => {
+        // Remove quotes and trim
+        let cleaned = v.replace(/^"|"$/g, '').trim()
+        return cleaned
+      })
+      
+      // If we have more values than headers, numbers with commas might have been split
+      // Try to reconstruct by merging numeric columns
+      if (values.length > headers.length) {
+        const numericColumns = ['base_price', 'revenue_2022', 'revenue_2023']
+        const extraValues = values.length - headers.length
+        
+        // Count numeric columns
+        const numericColIndices: number[] = []
+        headers.forEach((h, idx) => {
+          if (numericColumns.includes(h)) {
+            numericColIndices.push(idx)
+          }
+        })
+        
+        // Calculate fragments per numeric column (distribute evenly)
+        const fragmentsPerCol = numericColIndices.length > 0 
+          ? Math.floor(extraValues / numericColIndices.length)
+          : 0
+        const remainder = numericColIndices.length > 0 
+          ? extraValues % numericColIndices.length
+          : 0
+        
+        const reconstructed: string[] = []
+        let valueIdx = 0
+        
+        for (let hIdx = 0; hIdx < headers.length; hIdx++) {
+          const header = headers[hIdx]
+          const isNumeric = numericColumns.includes(header)
+          
+          if (isNumeric && valueIdx < values.length) {
+            // Start with first value
+            let merged = values[valueIdx] || ''
+            valueIdx++
+            
+            // Calculate how many fragments this numeric column should get
+            const colIndex = numericColIndices.indexOf(hIdx)
+            const fragmentsForThisCol = fragmentsPerCol + (colIndex < remainder ? 1 : 0)
+            
+            // Merge the calculated number of fragments
+            for (let f = 0; f < fragmentsForThisCol && valueIdx < values.length; f++) {
+              const fragment = values[valueIdx]
+              
+              // Only merge if it looks numeric
+              if (fragment === '' || /^[\d.]+$/.test(fragment)) {
+                // Handle decimal point - only allow one per number
+                if (fragment.includes('.')) {
+                  if (!merged.includes('.')) {
+                    merged += fragment
+                  }
+                } else {
+                  // Pure digits - merge
+                  merged += fragment
+                }
+                valueIdx++
+              } else {
+                break
+              }
+            }
+            
+            reconstructed.push(merged)
+          } else {
+            // Non-numeric column - take one value
+            if (valueIdx < values.length) {
+              reconstructed.push(values[valueIdx])
+              valueIdx++
+            } else {
+              reconstructed.push('')
+            }
+          }
+        }
+        
+        // Use reconstruction if we got the right number of columns
+        if (reconstructed.length === headers.length) {
+          values = reconstructed
+        }
+      }
       
       if (values.length !== headers.length) {
         skipped.push(i + 1)
@@ -89,27 +174,43 @@ export default function UploadPage() {
       }
 
       // Check for empty required fields
-      if (!row.company_name || !row.origin_country || !row.sector || !row.growth_rate) {
+      if (!row.company_name || !row.origin_country || !row.sector) {
         skipped.push(i + 1)
         continue
       }
 
-      // Validate and convert growth_rate
-      const growthRate = row.growth_rate.trim().toUpperCase()
-      if (!['LOW', 'MEDIUM', 'HIGH'].includes(growthRate)) {
+      // Helper function to clean numeric strings (remove all commas and whitespace)
+      // Handles Indian numbering format like "1,80,00,000" or "1,43,04,572"
+      const cleanNumber = (value: string): string => {
+        if (!value) return ''
+        // Remove all commas, spaces, and any other non-numeric characters except decimal point
+        return value.toString().replace(/,/g, '').replace(/\s/g, '').trim()
+      }
+
+      // Validate and convert numeric fields (remove commas before parsing)
+      const basePriceStr = cleanNumber(row.base_price || '')
+      const revenue2022Str = cleanNumber(row.revenue_2022 || '')
+      const revenue2023Str = cleanNumber(row.revenue_2023 || '')
+      
+      // Check if cleaned strings are empty
+      if (!basePriceStr || !revenue2022Str || !revenue2023Str) {
         skipped.push(i + 1)
         continue
       }
+      
+      // Parse numbers - use parseFloat for all to handle decimals
+      const basePrice = parseFloat(basePriceStr)
+      const revenue2022 = parseFloat(revenue2022Str)
+      const revenue2023 = parseFloat(revenue2023Str)
 
-      // Validate and convert numeric fields
-      const basePrice = parseInt(row.base_price, 10)
-      const revenue2022 = parseFloat(row.revenue_2022)
-      const revenue2023 = parseFloat(row.revenue_2023)
-
+      // Validate parsed numbers
       if (isNaN(basePrice) || isNaN(revenue2022) || isNaN(revenue2023)) {
         skipped.push(i + 1)
         continue
       }
+      
+      // Ensure base_price is an integer (round it)
+      const basePriceInt = Math.round(basePrice)
 
       // All validations passed, create company object
       // Convert Google Drive links to direct image URLs
@@ -117,16 +218,45 @@ export default function UploadPage() {
         ? convertGoogleDriveLink(row.logo_url.trim()) 
         : null
 
+      // Normalize sector to lowercase for consistency (DEFENCE -> defense, etc.)
+      const normalizedSector = row.sector.trim().toLowerCase()
+      // Map common variations
+      const sectorMap: { [key: string]: string } = {
+        'defence': 'defense',
+        'defense': 'defense',
+        'tech': 'tech',
+        'technology': 'tech',
+        'health': 'health',
+        'healthcare': 'health',
+        'finance': 'finance',
+        'financial': 'finance',
+        'agriculture': 'agriculture',
+        'agri': 'agriculture'
+      }
+      const finalSector = sectorMap[normalizedSector] || normalizedSector
+
       const company: Company = {
         id: '', // Will be generated by database
         company_name: row.company_name.trim(),
         origin_country: row.origin_country.trim(),
-        sector: row.sector.trim(),
-        base_price: basePrice,
+        sector: finalSector,
+        base_price: basePriceInt,
         revenue_2022: revenue2022,
         revenue_2023: revenue2023,
-        growth_rate: growthRate as 'LOW' | 'MEDIUM' | 'HIGH',
         logo_url: logoUrl
+      }
+
+      // Debug: Log first few companies to verify values
+      if (companies.length < 3) {
+        console.log(`Parsed company ${companies.length + 1}:`, {
+          name: company.company_name,
+          base_price: company.base_price,
+          revenue_2022: company.revenue_2022,
+          revenue_2023: company.revenue_2023,
+          raw_base_price: row.base_price,
+          raw_revenue_2022: row.revenue_2022,
+          raw_revenue_2023: row.revenue_2023
+        })
       }
 
       companies.push(company)
@@ -254,7 +384,7 @@ export default function UploadPage() {
             <strong>Skipped Rows:</strong> The following rows were skipped due to invalid or missing data: {skippedRows.slice(0, 20).join(', ')}
             {skippedRows.length > 20 && ` (and ${skippedRows.length - 20} more)`}
             <br />
-            <small>Common issues: Empty growth_rate, invalid numbers, or missing required fields</small>
+            <small>Common issues: Invalid numbers or missing required fields</small>
           </div>
         )}
 
@@ -267,15 +397,25 @@ export default function UploadPage() {
             <li><strong>company_name</strong> - Name of the company</li>
             <li><strong>origin_country</strong> - Country of origin</li>
             <li><strong>sector</strong> - Business sector</li>
-            <li><strong>base_price</strong> - Base price (integer)</li>
-            <li><strong>revenue_2022</strong> - Revenue for 2022 (decimal)</li>
-            <li><strong>revenue_2023</strong> - Revenue for 2023 (decimal)</li>
-            <li><strong>growth_rate</strong> - Growth rate (LOW, MEDIUM, or HIGH)</li>
+            <li><strong>base_price</strong> - Base price (integer, commas are automatically removed)</li>
+            <li><strong>revenue_2022</strong> - Income for 2022 (decimal, commas are automatically removed)</li>
+            <li><strong>revenue_2023</strong> - Income for 2023 (decimal, commas are automatically removed)</li>
             <li><strong>logo_url</strong> - URL to company logo image (optional - leave empty for "NO LOGO")</li>
           </ul>
-          <a href="/sample-companies.csv" download="sample-companies.csv" className={styles.downloadLink}>
-            Download Sample CSV Template
-          </a>
+          <p className={styles.infoText} style={{ marginTop: '15px', fontSize: '0.9rem', color: '#aaa' }}>
+            <strong>Note:</strong> Numbers with commas (e.g., 3,00,00,000 or "1,43,04,572") are automatically handled. The system supports Indian numbering format. Make sure numeric values are properly quoted in your CSV if they contain commas.
+          </p>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginTop: '15px' }}>
+            <a href="/defence-ww.csv" download="defence-ww.csv" className={styles.downloadLink}>
+              Download Defence WW CSV
+            </a>
+            <a href="/ww-final-data.csv" download="ww-final-data.csv" className={styles.downloadLink}>
+              Download WW Final Data CSV
+            </a>
+            <a href="/sample-companies.csv" download="sample-companies.csv" className={styles.downloadLink}>
+              Download Sample CSV Template
+            </a>
+          </div>
         </div>
 
         <button

@@ -8,7 +8,6 @@ CREATE TABLE companies (
   base_price BIGINT NOT NULL,
   revenue_2022 DECIMAL(15, 2) NOT NULL,
   revenue_2023 DECIMAL(15, 2) NOT NULL,
-  growth_rate TEXT NOT NULL CHECK (growth_rate IN ('LOW', 'MEDIUM', 'HIGH')),
   logo_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
@@ -22,7 +21,6 @@ INSERT INTO companies (
   base_price,
   revenue_2022,
   revenue_2023,
-  growth_rate,
   logo_url
 ) VALUES (
   'SEATRIUM MARINE SYSTEMS',
@@ -31,6 +29,5 @@ INSERT INTO companies (
   25000000,
   73876542.4,
   75432542.4,
-  'MEDIUM',
   NULL
 );

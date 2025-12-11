@@ -41,8 +41,8 @@ Simply paste the Google Drive share link in the `logo_url` column of your CSV fi
 ## Example CSV Entry
 
 ```csv
-company_name,origin_country,sector,base_price,revenue_2022,revenue_2023,growth_rate,logo_url
-My Company,USA,TECHNOLOGY,50000000,120000000,150000000,HIGH,https://drive.google.com/file/d/1ABC123xyz/view?usp=sharing
+company_name,origin_country,sector,base_price,revenue_2022,revenue_2023,logo_url
+My Company,USA,TECHNOLOGY,50000000,120000000,150000000,https://drive.google.com/file/d/1ABC123xyz/view?usp=sharing
 ```
 
 ## Supported Link Formats
