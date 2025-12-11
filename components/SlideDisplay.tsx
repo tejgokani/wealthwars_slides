@@ -200,8 +200,8 @@ export default function SlideDisplay({ company, onCompanyChange }: SlideDisplayP
             
             <div className={styles.revenueTable}>
               <div className={styles.tableRow}>
-                <div className={styles.tableCell}>INCOME 2022</div>
-                <div className={styles.tableCell}>INCOME 2023</div>
+                <div className={styles.tableCell}>INCOME 1st Year</div>
+                <div className={styles.tableCell}>INCOME 2nd Year</div>
               </div>
               <div className={styles.tableRow}>
                 <div className={styles.tableCell}>{Math.round(Number(company.revenue_2022) || 0).toLocaleString('en-US')}</div>
