@@ -18,6 +18,43 @@ export default function SlideDisplay({ company, onCompanyChange }: SlideDisplayP
   const [searchLoading, setSearchLoading] = useState(false)
   const slideRef = useRef<HTMLDivElement>(null)
   
+  // Format number in Indian numbering system (lakhs and crores)
+  // Example: 14741873 -> 1,47,41,873
+  const formatIndianNumber = (num: number): string => {
+    const rounded = Math.round(num)
+    const numStr = rounded.toString()
+    
+    // Handle negative numbers
+    const isNegative = rounded < 0
+    const absNumStr = Math.abs(rounded).toString()
+    
+    // Split into groups: last 3 digits, then groups of 2
+    let result = ''
+    let remaining = absNumStr
+    
+    // Take last 3 digits
+    if (remaining.length > 3) {
+      result = remaining.slice(-3)
+      remaining = remaining.slice(0, -3)
+    } else {
+      result = remaining
+      remaining = ''
+    }
+    
+    // Take groups of 2 digits
+    while (remaining.length > 0) {
+      if (remaining.length > 2) {
+        result = remaining.slice(-2) + ',' + result
+        remaining = remaining.slice(0, -2)
+      } else {
+        result = remaining + ',' + result
+        remaining = ''
+      }
+    }
+    
+    return isNegative ? '-' + result : result
+  }
+  
   // Debug: Log company data to help diagnose issues
   useEffect(() => {
     if (company) {
@@ -204,14 +241,14 @@ export default function SlideDisplay({ company, onCompanyChange }: SlideDisplayP
                 <div className={styles.tableCell}>INCOME 2nd Year</div>
               </div>
               <div className={styles.tableRow}>
-                <div className={styles.tableCell}>{Math.round(Number(company.revenue_2022) || 0).toLocaleString('en-US')}</div>
-                <div className={styles.tableCell}>{Math.round(Number(company.revenue_2023) || 0).toLocaleString('en-US')}</div>
+                <div className={styles.tableCell}>{formatIndianNumber(Number(company.revenue_2022) || 0)}</div>
+                <div className={styles.tableCell}>{formatIndianNumber(Number(company.revenue_2023) || 0)}</div>
               </div>
             </div>
             
             <div className={styles.infoRow}>
               <span className={styles.label}>BASE PRICE:</span>
-              <span className={styles.value}>{Math.round(Number(company.base_price) || 0).toLocaleString('en-US')}</span>
+              <span className={styles.value}>{formatIndianNumber(Number(company.base_price) || 0)}</span>
             </div>
           </div>
         </div>
