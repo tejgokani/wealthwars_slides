@@ -69,3 +69,9 @@ The `companies` table includes:
 2. Click "Search" to find and display the company slide
 3. The slide will automatically display with all company information in the formatted display
 4. Slides are generated automatically from the database data
+
+## Installation
+
+```bash
+npm install
+```
