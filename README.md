@@ -75,3 +75,5 @@ The `companies` table includes:
 ```bash
 npm install
 ```
+
+<!-- Updated via Git Committer -->
